@@ -4,7 +4,7 @@ import 'package:pokedex_flutter/services/pokemon_service.dart';
 import 'package:pokedex_flutter/widgets/favorites_notifier.dart';
 import 'package:pokedex_flutter/widgets/pockemon_card.dart';
 import 'package:pokedex_flutter/widgets/pokemon_card_skeleton.dart';
-import 'package:pokedex_flutter/widgets/theme_notifier.dart';
+import 'package:pokedex_flutter/widgets/theme_toggle_button.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -17,6 +17,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   final _service = PokemonService();
 
   List<PokemonDetail> _favorites = [];
+  final Set<String> _removingIds = {};
   bool _loading = false;
   Set<String> _loadedIds = {};
 
@@ -24,10 +25,36 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final currentIds = FavoritesNotifier.of(context).favoriteIds;
-    if (currentIds != _loadedIds) {
+
+    if (_loadedIds.isEmpty && currentIds.isNotEmpty) {
       _loadedIds = currentIds;
       _loadFavorites(currentIds);
+      return;
     }
+
+    final removed = _loadedIds.difference(currentIds);
+    final added = currentIds.difference(_loadedIds);
+
+    if (removed.isNotEmpty) {
+      _loadedIds = currentIds;
+      _animateRemoval(removed);
+    }
+
+    if (added.isNotEmpty) {
+      _loadedIds = currentIds;
+      _loadNewFavorites(added);
+    }
+  }
+
+  void _animateRemoval(Set<String> ids) {
+    setState(() => _removingIds.addAll(ids));
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      setState(() {
+        _favorites.removeWhere((p) => ids.contains(p.id));
+        _removingIds.removeAll(ids);
+      });
+    });
   }
 
   Future<void> _loadFavorites(Set<String> ids) async {
@@ -47,6 +74,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     }
   }
 
+  Future<void> _loadNewFavorites(Set<String> ids) async {
+    try {
+      final results = await Future.wait(ids.map(_service.fetchPokemonDetail));
+      setState(() => _favorites = [..._favorites, ...results]);
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,16 +89,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           'Favoritos',
           style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              Theme.of(context).brightness == Brightness.dark
-                  ? Icons.light_mode
-                  : Icons.dark_mode,
-            ),
-            onPressed: () => ThemeNotifier.of(context).toggle(),
-          ),
-        ],
+        actions: const [ThemeToggleButton()],
       ),
       body: _buildBody(),
     );
@@ -98,20 +123,14 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               'Sin favoritos aún',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.4),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
                   ),
             ),
             const SizedBox(height: 6),
             Text(
               'Toca ❤️ en cualquier pokémon para guardarlo',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.3),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
                   ),
             ),
           ],
@@ -123,10 +142,24 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       padding: const EdgeInsets.all(8),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.85,
+        childAspectRatio: 0.82,
       ),
       itemCount: _favorites.length,
-      itemBuilder: (_, i) => PokemonCard(pokemon: _favorites[i]),
+      itemBuilder: (_, i) {
+        final pokemon = _favorites[i];
+        final isRemoving = _removingIds.contains(pokemon.id);
+        return AnimatedOpacity(
+          opacity: isRemoving ? 0.0 : 1.0,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+          child: AnimatedScale(
+            scale: isRemoving ? 0.8 : 1.0,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            child: PokemonCard(pokemon: pokemon),
+          ),
+        );
+      },
     );
   }
 }

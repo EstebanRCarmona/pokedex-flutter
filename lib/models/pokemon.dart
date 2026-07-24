@@ -1,15 +1,15 @@
 class Pokemon {
   final String id;
   final String name;
-  final String type;
   final List<String> types;
   final String imagenUrl;
+
+  String get type => types.isNotEmpty ? types.first : '';
 
   const Pokemon({
     required this.id,
     required this.name,
-    required this.type,
-    this.types = const [],
+    required this.types,
     required this.imagenUrl,
   });
 
@@ -20,7 +20,7 @@ class Pokemon {
     return Pokemon(
       id: id,
       name: name[0].toUpperCase() + name.substring(1),
-      type: '',
+      types: const [],
       imagenUrl:
           'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png',
     );
@@ -61,8 +61,7 @@ class PokemonDetail extends Pokemon {
   const PokemonDetail({
     required super.id,
     required super.name,
-    required super.type,
-    super.types,
+    required super.types,
     required super.imagenUrl,
     this.shinyUrl,
     required this.height,
@@ -75,11 +74,12 @@ class PokemonDetail extends Pokemon {
 
   factory PokemonDetail.fromJson(Map<String, dynamic> json) {
     final name = json['name'] as String;
-    final typesList = (json['types'] as List).map<String>((t) => t['type']['name'] as String).toList();
+    final typesList = (json['types'] as List)
+        .map<String>((t) => t['type']['name'] as String)
+        .toList();
     return PokemonDetail(
       id: json['id'].toString(),
       name: name[0].toUpperCase() + name.substring(1),
-      type: typesList.first,
       types: typesList,
       imagenUrl: json['sprites']['other']['official-artwork']['front_default'] ?? '',
       shinyUrl: json['sprites']['other']['official-artwork']['front_shiny'],

@@ -14,14 +14,13 @@ class PokemonCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final typeColor = TypeIcon.colorFor(pokemon.type);
-    final favNotifier = FavoritesNotifier.of(context);
-    final isFav = favNotifier.isFavorite(pokemon.id);
 
     return Card(
       margin: const EdgeInsets.all(6),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => context.pushNamed('details', pathParameters: {'id': pokemon.id}),
+        onTap: () =>
+            context.pushNamed('details', pathParameters: {'id': pokemon.id}),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: Stack(
@@ -51,20 +50,13 @@ class PokemonCard extends StatelessWidget {
                         Text(
                           '#${pokemon.id.padLeft(3, '0')}',
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.4,
+                            ),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        GestureDetector(
-                          onTap: () => favNotifier.toggleFavorite(pokemon.id),
-                          child: Icon(
-                            isFav ? Icons.favorite : Icons.favorite_border,
-                            color: isFav
-                                ? Colors.redAccent
-                                : theme.colorScheme.onSurface.withValues(alpha: 0.35),
-                            size: 20,
-                          ),
-                        ),
+                        _FavoriteButton(pokemonId: pokemon.id),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -102,29 +94,33 @@ class PokemonCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: (pokemon.types.isNotEmpty ? pokemon.types : [pokemon.type])
+                      children: pokemon.types
                           .where((t) => t.isNotEmpty)
                           .map((t) {
-                        final color = TypeIcon.colorFor(t);
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              TypeIcon(type: t, size: 18),
-                              const SizedBox(height: 3),
-                              Text(
-                                t.toUpperCase(),
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: color,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 9,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                                final color = TypeIcon.colorFor(t);
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      TypeIcon(type: t, size: 18),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        t.toUpperCase(),
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              color: color,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 9,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              })
+                              .toList(),
                     ),
                   ],
                 ),
@@ -132,6 +128,29 @@ class PokemonCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FavoriteButton extends StatelessWidget {
+  final String pokemonId;
+
+  const _FavoriteButton({required this.pokemonId});
+
+  @override
+  Widget build(BuildContext context) {
+    final favNotifier = FavoritesNotifier.of(context);
+    final isFav = favNotifier.isFavorite(pokemonId);
+
+    return GestureDetector(
+      onTap: () => favNotifier.toggleFavorite(pokemonId),
+      child: Icon(
+        isFav ? Icons.favorite : Icons.favorite_border,
+        color: isFav
+            ? Colors.redAccent
+            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35),
+        size: 20,
       ),
     );
   }

@@ -35,6 +35,7 @@ dependencies:
   shared_preferences: ^2.5.5
   go_router: ^17.3.0
   dio: ^5.10.0
+  flutter_native_splash: ^2.4.3
 
 dev_dependencies:
   flutter_test:
@@ -46,6 +47,14 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "lib/assets/icon.png"
+
+flutter_native_splash:
+  color: "#FFF3E0"
+  color_dark: "#121212"
+  image: lib/assets/icon.png
+  android: true
+  ios: true
+  web: false
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

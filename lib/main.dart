@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pokedex_flutter/theme/app_theme.dart';
 import 'package:pokedex_flutter/router/app_router.dart';
 import 'package:pokedex_flutter/widgets/theme_notifier.dart';
 import 'package:pokedex_flutter/widgets/favorites_notifier.dart';
 
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   final prefs = await SharedPreferences.getInstance();
   final isDark = prefs.getBool('isDark') ?? false;
   final favoriteIds = await FavoritesNotifier.loadFavorites();
+  FlutterNativeSplash.remove();
   runApp(MyApp(isDark: isDark, favoriteIds: favoriteIds));
 }
 
@@ -40,6 +45,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _toggleFavorite(String id) {
+    HapticFeedback.mediumImpact();
     setState(() {
       final updated = Set<String>.from(_favoriteIds);
       if (updated.contains(id)) {

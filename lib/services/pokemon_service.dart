@@ -13,6 +13,15 @@ class PokemonService {
     ),
   );
 
+  Future<PokemonDetail?> searchPokemon(String name) async {
+    try {
+      return await fetchPokemonDetail(name.toLowerCase().trim());
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
   Future<List<Pokemon>> fetchPokemons({int offset = 0}) async {
     final res = await _dio.get(
       '/pokemon',
