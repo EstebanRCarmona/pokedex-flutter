@@ -6,6 +6,7 @@ import 'package:pokedex_flutter/router/app_router.dart';
 import 'package:pokedex_flutter/widgets/theme_notifier.dart';
 import 'package:pokedex_flutter/widgets/favorites_notifier.dart';
 
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 
 void main() async {
@@ -14,6 +15,8 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final isDark = prefs.getBool('isDark') ?? false;
   final favoriteIds = await FavoritesNotifier.loadFavorites();
+  final session = await AudioSession.instance;
+  await session.configure(const AudioSessionConfiguration.speech());
   FlutterNativeSplash.remove();
   runApp(MyApp(isDark: isDark, favoriteIds: favoriteIds));
 }

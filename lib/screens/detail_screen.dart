@@ -5,6 +5,7 @@ import '../services/pokemon_service.dart';
 import '../widgets/error_view.dart';
 import '../widgets/favorites_notifier.dart';
 import '../widgets/theme_toggle_button.dart';
+import '../widgets/cry_button.dart';
 import '../widgets/type_icon.dart';
 
 class DetailScreen extends StatefulWidget {
@@ -16,26 +17,48 @@ class DetailScreen extends StatefulWidget {
   State<DetailScreen> createState() => _DetailScreenState();
 }
 
-class _DetailScreenState extends State<DetailScreen> {
+class _DetailScreenState extends State<DetailScreen>
+    with SingleTickerProviderStateMixin {
   final _service = PokemonService();
   late Future<PokemonDetail> _detailFuture;
   Future<List<EvolutionStep>>? _evolutionFuture;
   bool _showShiny = false;
+  late final AnimationController _entranceCtrl;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
 
   @override
   void initState() {
     super.initState();
+    _entranceCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _fadeAnim = CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOut));
+
     _detailFuture = _service.fetchPokemonDetail(widget.id).then((detail) {
       if (detail.speciesUrl != null) {
         setState(() {
           _evolutionFuture = _service.fetchEvolutionChain(detail.speciesUrl!);
         });
       }
+      _entranceCtrl.forward();
       return detail;
     });
   }
 
+  @override
+  void dispose() {
+    _entranceCtrl.dispose();
+    super.dispose();
+  }
+
   void _retry() {
+    _entranceCtrl.reset();
     setState(() {
       _evolutionFuture = null;
       _detailFuture = _service.fetchPokemonDetail(widget.id).then((detail) {
@@ -44,6 +67,7 @@ class _DetailScreenState extends State<DetailScreen> {
             _evolutionFuture = _service.fetchEvolutionChain(detail.speciesUrl!);
           });
         }
+        _entranceCtrl.forward();
         return detail;
       });
     });
@@ -86,70 +110,76 @@ class _DetailScreenState extends State<DetailScreen> {
         ? pokemon.shinyUrl!
         : pokemon.imagenUrl;
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _DetailHeader(
-            pokemon: pokemon,
-            imageUrl: imageUrl,
-            typeColor: typeColor,
-            isDark: isDark,
-            onToggleShiny: () => setState(() => _showShiny = !_showShiny),
-            showShiny: _showShiny,
-          ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _DetailInfoRow(
-                  pokemon: pokemon,
-                  typeColor: typeColor,
-                  isDark: isDark,
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: SlideTransition(
+        position: _slideAnim,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _DetailHeader(
+                pokemon: pokemon,
+                imageUrl: imageUrl,
+                typeColor: typeColor,
+                isDark: isDark,
+                onToggleShiny: () => setState(() => _showShiny = !_showShiny),
+                showShiny: _showShiny,
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _DetailInfoRow(
+                      pokemon: pokemon,
+                      typeColor: typeColor,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 24),
+                    if (pokemon.stats.isNotEmpty) ...[
+                      const _SectionTitle(title: 'Stats base'),
+                      const SizedBox(height: 12),
+                      ...pokemon.stats.map(
+                        (s) => _StatBar(stat: s, typeColor: typeColor),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    if (pokemon.abilities.isNotEmpty) ...[
+                      const _SectionTitle(title: 'Habilidades'),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: pokemon.abilities
+                            .map(
+                              (a) => _AbilityChip(
+                                ability: a,
+                                typeColor: typeColor,
+                                isDark: isDark,
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    if (_evolutionFuture != null) ...[
+                      const _SectionTitle(title: 'Evoluciones'),
+                      const SizedBox(height: 12),
+                      _EvolutionChain(
+                        future: _evolutionFuture!,
+                        currentId: widget.id,
+                        typeColor: typeColor,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 24),
-                if (pokemon.stats.isNotEmpty) ...[
-                  const _SectionTitle(title: 'Stats base'),
-                  const SizedBox(height: 12),
-                  ...pokemon.stats.map(
-                    (s) => _StatBar(stat: s, typeColor: typeColor),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                if (pokemon.abilities.isNotEmpty) ...[
-                  const _SectionTitle(title: 'Habilidades'),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: pokemon.abilities
-                        .map(
-                          (a) => _AbilityChip(
-                            ability: a,
-                            typeColor: typeColor,
-                            isDark: isDark,
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                if (_evolutionFuture != null) ...[
-                  const _SectionTitle(title: 'Evoluciones'),
-                  const SizedBox(height: 12),
-                  _EvolutionChain(
-                    future: _evolutionFuture!,
-                    currentId: widget.id,
-                    typeColor: typeColor,
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -227,6 +257,11 @@ class _DetailHeader extends StatelessWidget {
                     ),
             ),
           ),
+          Positioned(
+            top: 0,
+            left: 16,
+            child: CryButton(pokemonId: pokemon.id, typeColor: typeColor),
+          ),
           if (pokemon.shinyUrl != null)
             Positioned(
               top: 0,
@@ -271,6 +306,7 @@ class _DetailHeader extends StatelessWidget {
     );
   }
 }
+
 
 class _InfoChip extends StatelessWidget {
   final Widget child;
@@ -426,11 +462,20 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _StatBar extends StatelessWidget {
+class _StatBar extends StatefulWidget {
   final PokemonStat stat;
   final Color typeColor;
 
   const _StatBar({required this.stat, required this.typeColor});
+
+  @override
+  State<_StatBar> createState() => _StatBarState();
+}
+
+class _StatBarState extends State<_StatBar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _anim;
 
   static const _names = {
     'hp': 'HP',
@@ -442,6 +487,26 @@ class _StatBar extends StatelessWidget {
   };
 
   @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic);
+    // pequeño delay para que arranque después del fade de entrada
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
@@ -451,7 +516,7 @@ class _StatBar extends StatelessWidget {
           SizedBox(
             width: 90,
             child: Text(
-              _names[stat.name] ?? stat.name,
+              _names[widget.stat.name] ?? widget.stat.name,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -460,10 +525,10 @@ class _StatBar extends StatelessWidget {
           SizedBox(
             width: 36,
             child: Text(
-              '${stat.value}',
+              '${widget.stat.value}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: typeColor,
+                color: widget.typeColor,
               ),
               textAlign: TextAlign.right,
             ),
@@ -472,11 +537,14 @@ class _StatBar extends StatelessWidget {
           Expanded(
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: stat.value / 255.0,
-                minHeight: 8,
-                backgroundColor: typeColor.withValues(alpha: 0.15),
-                valueColor: AlwaysStoppedAnimation(typeColor),
+              child: AnimatedBuilder(
+                animation: _anim,
+                builder: (context, _) => LinearProgressIndicator(
+                  value: (widget.stat.value / 255.0) * _anim.value,
+                  minHeight: 8,
+                  backgroundColor: widget.typeColor.withValues(alpha: 0.15),
+                  valueColor: AlwaysStoppedAnimation(widget.typeColor),
+                ),
               ),
             ),
           ),
